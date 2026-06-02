@@ -2,30 +2,31 @@ export async function generateStudyMaterials(pdfText) {
   const apiKey = process.env.GROQ_API_KEY
 
   if (!apiKey) {
-    throw new Error("GROQ_API_KEY is missing")
+    throw new Error("Missing GROQ_API_KEY")
   }
 
-  const trimmedText = pdfText.slice(0, 6000)
+  // SMALLER TEXT = MORE STABLE
+  const trimmedText = pdfText.slice(0, 3000)
 
   const prompt = `
-Create study material from the given text.
+Create short study materials from this text.
 
 Return ONLY valid JSON.
 
-Include:
-- subject
-- summary
-- notes
-- flashcards
-- mcqs
-- quiz
+{
+  "subject": "",
+  "summary": "",
+  "notes": {
+    "title": "Study Notes",
+    "keyPoints": [],
+    "sections": []
+  },
+  "flashcards": [],
+  "mcqs": [],
+  "quiz": []
+}
 
-Generate:
-- 10 flashcards
-- 10 MCQs
-- 10 quiz questions
-
-Text:
+TEXT:
 ${trimmedText}
 `
 
@@ -45,8 +46,7 @@ ${trimmedText}
           messages: [
             {
               role: "system",
-              content:
-                "You are a JSON-only API. Always return valid JSON only.",
+              content: "Return only valid JSON.",
             },
             {
               role: "user",
@@ -54,44 +54,33 @@ ${trimmedText}
             },
           ],
 
-          temperature: 0.3,
-
           response_format: {
             type: "json_object",
           },
 
-          max_tokens: 2000,
+          temperature: 0.2,
+          max_tokens: 1200,
         }),
       }
     )
 
-    // RAW RESPONSE
-    const rawText = await response.text()
+    const data = await response.json()
 
-    console.log("RAW RESPONSE:", rawText)
+    console.log("GROQ:", data)
 
-    // Convert response to JSON
-    const data = JSON.parse(rawText)
-
-    // Handle API errors
     if (data.error) {
-      console.log("GROQ API ERROR:", data.error)
-      throw new Error(data.error.message || "Groq API failed")
+      throw new Error(data.error.message)
     }
 
-    // Extract AI content
     const content = data?.choices?.[0]?.message?.content
 
     if (!content) {
-      throw new Error("No AI content returned")
+      throw new Error("No content returned")
     }
 
-    console.log("AI CONTENT:", content)
-
-    // Parse final JSON
     return JSON.parse(content)
   } catch (err) {
-    console.error("FULL AI ERROR:", err)
+    console.error("AI ERROR:", err)
     throw new Error("AI failed to generate study materials")
   }
 }
