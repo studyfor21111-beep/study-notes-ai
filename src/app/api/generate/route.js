@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic"
+
 import { NextResponse } from 'next/server'
 import { rateLimit } from '@/lib/rateLimit'
 import { generateStudyMaterials } from '@/lib/gemini'
@@ -144,9 +146,4 @@ export async function POST(request) {
   }
 }
 
-// Increase body size limit for file uploads
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-}
+
