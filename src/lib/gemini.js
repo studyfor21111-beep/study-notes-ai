@@ -5,132 +5,28 @@ export async function generateStudyMaterials(pdfText) {
     throw new Error("GROQ_API_KEY is missing")
   }
 
-  const trimmedText = pdfText.slice(0, 12000)
+  const trimmedText = pdfText.slice(0, 6000)
 
   const prompt = `
-You are an expert AI study assistant.
+Create study material from the given text.
 
-Analyze the educational content carefully and generate HIGH QUALITY study material.
+Return ONLY valid JSON.
 
-CONTENT:
-"""
+Include:
+- subject
+- summary
+- notes
+- flashcards
+- mcqs
+- quiz
+
+Generate:
+- 10 flashcards
+- 10 MCQs
+- 10 quiz questions
+
+Text:
 ${trimmedText}
-"""
-
-RETURN ONLY VALID JSON.
-
-{
-  "subject": "Subject Name",
-  "summary": "2-3 line summary",
-
-  "notes": {
-    "title": "Study Notes",
-
-    "keyPoints": [
-      "Point 1",
-      "Point 2",
-      "Point 3",
-      "Point 4",
-      "Point 5",
-      "Point 6",
-      "Point 7",
-      "Point 8"
-    ],
-
-    "sections": [
-      {
-        "heading": "Heading",
-        "content": "Detailed explanation"
-      },
-      {
-        "heading": "Heading",
-        "content": "Detailed explanation"
-      },
-      {
-        "heading": "Heading",
-        "content": "Detailed explanation"
-      },
-      {
-        "heading": "Heading",
-        "content": "Detailed explanation"
-      }
-    ]
-  },
-
-  "flashcards": [
-    {
-      "id": 1,
-      "front": "Question",
-      "back": "Answer"
-    },
-    {
-      "id": 2,
-      "front": "Question",
-      "back": "Answer"
-    },
-    {
-      "id": 3,
-      "front": "Question",
-      "back": "Answer"
-    },
-    {
-      "id": 4,
-      "front": "Question",
-      "back": "Answer"
-    },
-    {
-      "id": 5,
-      "front": "Question",
-      "back": "Answer"
-    },
-    {
-      "id": 6,
-      "front": "Question",
-      "back": "Answer"
-    },
-    {
-      "id": 7,
-      "front": "Question",
-      "back": "Answer"
-    },
-    {
-      "id": 8,
-      "front": "Question",
-      "back": "Answer"
-    },
-    {
-      "id": 9,
-      "front": "Question",
-      "back": "Answer"
-    },
-    {
-      "id": 10,
-      "front": "Question",
-      "back": "Answer"
-    }
-  ],
-
-  "mcqs": [
-    {
-      "id": 1,
-      "question": "Question?",
-      "options": ["A", "B", "C", "D"],
-      "correctIndex": 0,
-      "explanation": "Explanation"
-    }
-  ],
-
-  "quiz": [
-    {
-      "id": 1,
-      "question": "Hard Question?",
-      "options": ["A", "B", "C", "D"],
-      "correctIndex": 1,
-      "explanation": "Explanation",
-      "difficulty": "medium"
-    }
-  ]
-}
 `
 
   try {
@@ -142,42 +38,60 @@ RETURN ONLY VALID JSON.
           "Content-Type": "application/json",
           Authorization: `Bearer ${apiKey}`,
         },
+
         body: JSON.stringify({
           model: "llama-3.1-8b-instant",
+
           messages: [
+            {
+              role: "system",
+              content:
+                "You are a JSON-only API. Always return valid JSON only.",
+            },
             {
               role: "user",
               content: prompt,
             },
           ],
-          temperature: 0.7,
-          max_tokens: 4000,
+
+          temperature: 0.3,
+
+          response_format: {
+            type: "json_object",
+          },
+
+          max_tokens: 2000,
         }),
       }
     )
 
-    if (!response.ok) {
-      const errText = await response.text()
-      console.log("GROQ ERROR:", errText)
-      throw new Error("Groq API request failed")
+    // RAW RESPONSE
+    const rawText = await response.text()
+
+    console.log("RAW RESPONSE:", rawText)
+
+    // Convert response to JSON
+    const data = JSON.parse(rawText)
+
+    // Handle API errors
+    if (data.error) {
+      console.log("GROQ API ERROR:", data.error)
+      throw new Error(data.error.message || "Groq API failed")
     }
 
-    const data = await response.json()
+    // Extract AI content
+    const content = data?.choices?.[0]?.message?.content
 
-    const text = data?.choices?.[0]?.message?.content
-
-    if (!text) {
-      throw new Error("Empty AI response")
+    if (!content) {
+      throw new Error("No AI content returned")
     }
 
-    const clean = text
-      .replace(/```json/g, "")
-      .replace(/```/g, "")
-      .trim()
+    console.log("AI CONTENT:", content)
 
-    return JSON.parse(clean)
+    // Parse final JSON
+    return JSON.parse(content)
   } catch (err) {
-    console.error("AI ERROR:", err)
+    console.error("FULL AI ERROR:", err)
     throw new Error("AI failed to generate study materials")
   }
 }
