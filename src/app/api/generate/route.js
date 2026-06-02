@@ -1,12 +1,11 @@
 export const dynamic = "force-dynamic"
-
+export const maxDuration = 60
 import { NextResponse } from 'next/server'
 import { rateLimit } from '@/lib/rateLimit'
 import { generateStudyMaterials } from '@/lib/gemini'
 
 // Max file size: 10MB
-const MAX_FILE_SIZE = parseInt(process.env.NEXT_PUBLIC_MAX_FILE_SIZE_MB || '10') * 1024 * 1024
-
+const MAX_FILE_SIZE = 4 * 1024 * 1024
 export async function POST(request) {
   // Get client IP for rate limiting
   const ip =
